@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>射频消融术（RFA）图解</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const steps = [
+      {
+        id: 0,
+        title: "① 穿刺入路",
+        desc: "在腹股沟处穿刺股静脉（或股动脉），切口仅2-3mm，将导管鞘置入血管。",
+        color: "#3b82f6",
+      },
+      {
+        id: 1,
+        title: "② 导管推进",
+        desc: "在X线透视引导下，将电极导管沿血管送入心腔（或病灶部位），精准定位异常传导点。",
+        color: "#8b5cf6",
+      },
+      {
+        id: 2,
+        title: "③ 电生理标测",
+        desc: "通过心内电生理检查，标测并锁定引发心律失常的「异常兴奋点」或「旁路」。",
+        color: "#f59e0b",
+      },
+      {
+        id: 3,
+        title: "④ 射频放电消融",
+        desc: "导管顶端释放高频电流（375-500kHz），局部温度升至65-95℃，组织细胞摩擦产热，发生凝固性坏死。",
+        color: "#ef4444",
+      },
+      {
+        id: 4,
+        title: "⑤ 坏死灶形成",
+        desc: "消融范围约1-3mm，精准破坏异常传导路径，正常心肌不受影响。坏死组织由巨噬细胞吞噬清除。",
+        color: "#10b981",
+      },
+      {
+        id: 5,
+        title: "⑥ 验证撤出",
+        desc: "再次电生理检查验证消融成功，确认异常传导消失，撤出所有导管，压迫穿刺点止血。",
+        color: "#06b6d4",
+      },
+    ];
+
+    const indications = [
+      { icon: "❤️", name: "心律失常", items: ["阵发性室上速（成功率95%+）", "房颤 / 房扑", "预激综合征", "室性早搏 / 室速"] },
+      { icon: "🫁", name: "实体肿瘤", items: ["肝癌（原发/转移）", "肺癌（周围型）", "肾癌", "乳腺癌"] },
+      { icon: "🦋", name: "甲状腺", items: ["甲状腺结节", "甲状腺良性增生"] },
+      { icon: "🏥", name: "其他", items: ["功能性子宫出血", "前列腺增生", "皮肤良性病变"] },
+    ];
+
+    function HeartSVG({ step, pulse }) {
+      const ablating = step === 3;
+      const done = step >= 4;
+      return (
+        <svg viewBox="0 0 220 200" width="100%" height="100%">
+          {ablating && (
+            <radialGradient id="heatGlow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#ef4444" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="#ef4444" stopOpacity="0" />
+            </radialGradient>
+          )}
+          {ablating && <ellipse cx="110" cy="100" rx="80" ry="70" fill="url(#heatGlow)" />}
+
+          <path
+            d="M110 160 C60 120 20 90 30 55 C38 28 65 20 85 35 C95 43 105 55 110 65
+               C115 55 125 43 135 35 C155 20 182 28 190 55 C200 90 160 120 110 160Z"
+            fill={ablating ? "#ff6b6b" : "#e05a7a"}
+            stroke="#c0395a"
+            strokeWidth="2"
+            style={{ transition: "fill 0.5s" }}
+          />
+
+          {pulse && step < 2 && (
+            <>
+              <circle cx="110" cy="100" r="30" fill="none" stroke="#ff9bb3" strokeWidth="2" opacity="0.6">
+                <animate attributeName="r" from="30" to="70" dur="1s" repeatCount="indefinite" />
+                <animate attributeName="opacity" from="0.6" to="0" dur="1s" repeatCount="indefinite" />
+              </circle>
+            </>
+          )}
+
+          {step >= 1 && (
+            <path
+              d="M110 185 L110 155 L100 130 L108 110"
+              stroke="#60a5fa"
+              strokeWidth="3"
+              fill="none"
+              strokeLinecap="round"
+              strokeDasharray={step === 1 ? "5,4" : "none"}
+            />
+          )}
+
+          {step >= 1 && (
+            <circle cx="108" cy="108" r="5" fill="#3b82f6" stroke="white" strokeWidth="1.5">
+              {step === 1 && (
+                <animate attributeName="cy" values="130;108" dur="1s" fill="freeze" />
+              )}
+            </circle>
+          )}
+
+          {step >= 2 && step < 4 && (
+            <>
+              <circle cx="108" cy="108" r="10" fill="none" stroke="#f59e0b" strokeWidth="2" strokeDasharray="3,2">
+                <animate attributeName="r" values="8;13;8" dur="0.8s" repeatCount="indefinite" />
+              </circle>
+              <text x="122" y="100" fontSize="9" fill="#f59e0b" fontWeight="bold">异常点</text>
+            </>
+          )}
+
+          {ablating && (
+            <>
+              {[0,1,2,3,4].map(i => (
+                <line
+                  key={i}
+                  x1="108" y1="108"
+                  x2={108 + Math.cos(i * 72 * Math.PI / 180) * 16}
+                  y2={108 + Math.sin(i * 72 * Math.PI / 180) * 16}
+                  stroke="#fbbf24" strokeWidth="2" strokeLinecap="round"
+                >
+                  <animate attributeName="opacity" values="1;0;1" dur={`${0.3 + i * 0.1}s`} repeatCount="indefinite" />
+                </line>
+              ))}
+              <text x="70" y="78" fontSize="8" fill="#ef4444" fontWeight="bold">🔥 高温凝固坏死</text>
+            </>
+          )}
+
+          {done && (
+            <>
+              <circle cx="108" cy="108" r="7" fill="#10b981" />
+              <text x="104" y="112" fontSize="9" fill="white" fontWeight="bold">✓</text>
+              <text x="68" y="80" fontSize="8" fill="#10b981" fontWeight="bold">消融灶已形成</text>
+            </>
+          )}
+
+          {step >= 0 && (
+            <>
+              <circle cx="110" cy="188" r="4" fill="#60a5fa" stroke="white" strokeWidth="1" />
+              <text x="116" y="192" fontSize="8" fill="#93c5fd">穿刺点</text>
+            </>
+          )}
+
+          <text x="90" y="20" fontSize="10" fill="#fda4af" fontWeight="bold">心脏射频消融示意</text>
+        </svg>
+      );
+    }
+
+    function App() {
+      const [step, setStep] = useState(0);
+      const [auto, setAuto] = useState(false);
+      const [pulse, setPulse] = useState(true);
+      const [tab, setTab] = useState("principle");
+      const timerRef = useRef(null);
+
+      useEffect(() => {
+        if (auto) {
+          timerRef.current = setInterval(() => {
+            setStep(s => {
+              if (s >= steps.length - 1) { setAuto(false); return s; }
+              return s + 1;
+            });
+          }, 2200);
+        }
+        return () => clearInterval(timerRef.current);
+      }, [auto]);
+
+      useEffect(() => {
+        const t = setInterval(() => setPulse(p => !p), 800);
+        return () => clearInterval(t);
+      }, []);
+
+      const cur = steps[step];
+
+      return (
+        <div style={{ fontFamily: "system-ui,sans-serif", background: "#0f172a", minHeight: "100vh", color: "#e2e8f0", padding: "16px" }}>
+          <h1 style={{ textAlign: "center", fontSize: "20px", fontWeight: "bold", color: "#f8fafc", margin: "0 0 4px" }}>
+            🏥 射频消融术（RFA）图解
+          </h1>
+          <p style={{ textAlign: "center", fontSize: "12px", color: "#94a3b8", margin: "0 0 16px" }}>
+            Radiofrequency Ablation — 原理 · 适应症 · 成功率
+          </p>
+
+          <div style={{ display: "flex", gap: "8px", justifyContent: "center", marginBottom: "16px" }}>
+            {[["principle","⚡ 手术原理"],["indication","🩺 适应症"],["success","📊 成功率"]].map(([k,v]) => (
+              <button key={k} onClick={() => setTab(k)} style={{
+                padding: "6px 14px", borderRadius: "20px", border: "none", cursor: "pointer", fontSize: "13px",
+                background: tab === k ? cur.color : "#1e293b", color: tab === k ? "white" : "#94a3b8",
+                transition: "all 0.3s"
+              }}>{v}</button>
+            ))}
+          </div>
+
+          {tab === "principle" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", maxWidth: "680px", margin: "0 auto" }}>
+              <div style={{ display: "flex", gap: "12px", alignItems: "stretch" }}>
+                <div style={{ flex: "0 0 200px", background: "#1e293b", borderRadius: "16px", padding: "12px", border: `2px solid ${cur.color}33`, display: "flex", flexDirection: "column", alignItems: "center" }}>
+                  <div style={{ width: "100%", height: "180px" }}>
+                    <HeartSVG step={step} pulse={pulse} />
+                  </div>
+                  <div style={{ marginTop: "8px", display: "flex", gap: "6px" }}>
+                    <button onClick={() => { setAuto(false); setStep(s => Math.max(0, s - 1)); }}
+                      style={{ padding: "4px 10px", background: "#334155", border: "none", borderRadius: "8px", color: "white", cursor: "pointer", fontSize: "16px" }}>◀</button>
+                    <button onClick={() => setAuto(a => !a)}
+                      style={{ padding: "4px 12px", background: auto ? "#ef4444" : cur.color, border: "none", borderRadius: "8px", color: "white", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}>
+                      {auto ? "⏸ 暂停" : "▶ 自动"}
+                    </button>
+                    <button onClick={() => { setAuto(false); setStep(s => Math.min(steps.length - 1, s + 1)); }}
+                      style={{ padding: "4px 10px", background: "#334155", border: "none", borderRadius: "8px", color: "white", cursor: "pointer", fontSize: "16px" }}>▶</button>
+                  </div>
+                </div>
+
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <div style={{ background: "#1e293b", borderRadius: "12px", padding: "14px", border: `2px solid ${cur.color}`, minHeight: "100px" }}>
+                    <div style={{ fontSize: "16px", fontWeight: "bold", color: cur.color, marginBottom: "8px" }}>{cur.title}</div>
+                    <div style={{ fontSize: "13px", color: "#cbd5e1", lineHeight: "1.6" }}>{cur.desc}</div>
+                  </div>
+
+                  <div style={{ background: "#1e293b", borderRadius: "12px", padding: "12px", border: "1px solid #334155" }}>
+                    <div style={{ fontSize: "12px", color: "#64748b", marginBottom: "6px" }}>🔬 核心原理</div>
+                    <div style={{ fontSize: "12px", color: "#94a3b8", lineHeight: "1.6" }}>
+                      射频波（375–500kHz）→ 带电离子振动碰撞 → 摩擦产热 →<br />
+                      局部温度 <span style={{ color: "#ef4444", fontWeight: "bold" }}>65~95°C</span> → 组织凝固性坏死 → 阻断异常传导
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "6px" }}>
+                {steps.map((s, i) => (
+                  <button key={i} onClick={() => { setAuto(false); setStep(i); }} style={{
+                    flex: 1, padding: "8px 4px", borderRadius: "10px", border: "none", cursor: "pointer",
+                    background: i === step ? s.color : i < step ? `${s.color}44` : "#1e293b",
+                    color: i <= step ? "white" : "#475569", fontSize: "11px", fontWeight: "bold",
+                    transition: "all 0.3s"
+                  }}>{i + 1}</button>
+                ))}
+              </div>
+              <div style={{ textAlign: "center", fontSize: "12px", color: "#475569" }}>
+                步骤 {step + 1} / {steps.length} — 点击数字跳转
+              </div>
+            </div>
+          )}
+
+          {tab === "indication" && (
+            <div style={{ maxWidth: "680px", margin: "0 auto" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                {indications.map((ind, i) => (
+                  <div key={i} style={{ background: "#1e293b", borderRadius: "14px", padding: "16px", border: "1px solid #334155" }}>
+                    <div style={{ fontSize: "22px", marginBottom: "6px" }}>{ind.icon}</div>
+                    <div style={{ fontWeight: "bold", color: "#f1f5f9", marginBottom: "10px", fontSize: "14px" }}>{ind.name}</div>
+                    {ind.items.map((item, j) => (
+                      <div key={j} style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "5px" }}>
+                        <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#3b82f6", flexShrink: 0 }} />
+                        <span style={{ fontSize: "12px", color: "#94a3b8" }}>{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+              <div style={{ marginTop: "12px", background: "#1e293b", borderRadius: "14px", padding: "14px", border: "1px solid #334155" }}>
+                <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "6px" }}>✅ 手术优势</div>
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                  {["微创（切口仅2-3mm）","手术时间短（1-2小时）","住院约1周","局麻即可","可重复操作","保留器官功能"].map((t, i) => (
+                    <span key={i} style={{ background: "#0f4c75", borderRadius: "20px", padding: "3px 10px", fontSize: "11px", color: "#7dd3fc" }}>{t}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {tab === "success" && (
+            <div style={{ maxWidth: "680px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "10px" }}>
+              {[
+                { name: "阵发性室上性心动过速", rate: 95, color: "#10b981", note: "（全国三甲医院平均）" },
+                { name: "心房扑动", rate: 90, color: "#3b82f6", note: "" },
+                { name: "预激综合征（房室旁路）", rate: 93, color: "#8b5cf6", note: "" },
+                { name: "房颤（肺静脉隔离）", rate: 75, color: "#f59e0b", note: "（阵发性，单次手术）" },
+                { name: "特发性室性心动过速", rate: 80, color: "#06b6d4", note: "" },
+                { name: "肝癌（≤3cm）射频消融", rate: 85, color: "#ef4444", note: "（局部完全消融率）" },
+              ].map((item, i) => (
+                <div key={i} style={{ background: "#1e293b", borderRadius: "12px", padding: "12px 16px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
+                    <span style={{ fontSize: "13px", color: "#e2e8f0" }}>{item.name}</span>
+                    <span style={{ fontSize: "13px", fontWeight: "bold", color: item.color }}>{item.rate}%<span style={{ color: "#64748b", fontSize: "11px", fontWeight: "normal" }}>{item.note}</span></span>
+                  </div>
+                  <div style={{ height: "8px", background: "#334155", borderRadius: "4px", overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${item.rate}%`, background: item.color, borderRadius: "4px", transition: "width 1s" }} />
+                  </div>
+                </div>
+              ))}
+
+              <div style={{ background: "#1e2d1e", borderRadius: "14px", padding: "14px", border: "1px solid #166534" }}>
+                <div style={{ fontSize: "13px", color: "#4ade80", fontWeight: "bold", marginBottom: "6px" }}>🏥 三线城市三甲医院说明</div>
+                <div style={{ fontSize: "12px", color: "#86efac", lineHeight: "1.8" }}>
+                  • 射频消融属于成熟介入技术，技术标准化程度高，三线城市三甲医院成功率与一线城市差距已大幅缩小。<br />
+                  • <strong>心律失常（室上速）</strong>：三线三甲成功率通常在 <span style={{ color: "#fbbf24" }}>90-95%</span>，接近大型中心水平。<br />
+                  • <strong>房颤消融</strong>：复杂度高，经验依赖性强，建议选择年手术量 &gt;200 例的医院，三线三甲约 <span style={{ color: "#fbbf24" }}>70-80%</span>（阵发性）。<br />
+                  • <strong>肿瘤消融</strong>：与操作医生经验和影像设备密切相关，建议评估该院年消融量。<br />
+                  • 注：目前暂无专门针对"三线城市三甲"的公开统计数据，以上为业界估算区间。
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>
